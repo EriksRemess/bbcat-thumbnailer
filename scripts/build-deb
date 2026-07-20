@@ -1,0 +1,77 @@
+#!/bin/sh
+set -eu
+
+project_dir=$(CDPATH='' cd -- "$(dirname -- "$0")/.." && pwd)
+cd "$project_dir"
+
+base_version=$(sed -n 's/^version = "\([^"]*\)"/\1/p' Cargo.toml | head -n 1)
+if commit_epoch=$(git show -s --format=%ct HEAD 2>/dev/null); then
+    commit_date=$(date -u -d "@$commit_epoch" +%Y%m%d%H%M%S)
+    commit_short=$(git rev-parse --short=8 HEAD)
+    package_version="${base_version}+git${commit_date}.${commit_short}"
+    build_epoch=$commit_epoch
+else
+    build_epoch=$(date +%s)
+    build_date=$(date -u -d "@$build_epoch" +%Y%m%d%H%M%S)
+    package_version="${base_version}+local${build_date}"
+fi
+architecture=$(dpkg --print-architecture)
+
+work_dir=$(mktemp -d "${TMPDIR:-/tmp}/bbcat-thumbnailer-deb.XXXXXX")
+trap 'rm -rf "$work_dir"' EXIT HUP INT TERM
+package_root="$work_dir/root"
+mkdir -p "$package_root/DEBIAN" "$work_dir/debian" dist
+chmod 755 "$package_root" "$package_root/DEBIAN"
+
+# Stage the normal /usr layout. An empty SUDO keeps package construction
+# unprivileged, and DESTDIR prevents either MIME database from being updated.
+make install DESTDIR="$package_root" PREFIX=/usr SUDO=
+
+# dpkg-shlibdeps maps the binary's ELF requirements to Debian package names.
+# It only needs this minimal source stanza alongside the staged executable.
+cat >"$work_dir/debian/control" <<EOF
+Source: bbcat-thumbnailer
+Package: bbcat-thumbnailer
+Architecture: any
+EOF
+dependencies=$(
+    cd "$work_dir"
+    dpkg-shlibdeps -O root/usr/bin/bbcat-thumbnailer | sed 's/^shlibs:Depends=//'
+)
+
+documentation="$package_root/usr/share/doc/bbcat-thumbnailer"
+install -Dm644 README.md "$documentation/README.md"
+install -Dm644 LICENSE "$documentation/copyright"
+changelog_date=$(date -R -d "@$build_epoch")
+printf '%s\n' \
+    "bbcat-thumbnailer ($package_version) unstable; urgency=medium" \
+    '' \
+    '  * Build the current development snapshot.' \
+    '' \
+    " -- Ēriks Remess <eriks@remess.lv>  $changelog_date" \
+    | gzip -9n >"$documentation/changelog.gz"
+chmod 644 "$documentation/changelog.gz"
+
+cat >"$package_root/DEBIAN/control" <<EOF
+Package: bbcat-thumbnailer
+Version: $package_version
+Section: graphics
+Priority: optional
+Architecture: $architecture
+Maintainer: Ēriks Remess <eriks@remess.lv>
+Depends: $dependencies
+Homepage: https://github.com/EriksRemess/bbcat-thumbnailer
+Description: Nautilus thumbnails for ANSI and BBS artwork
+ A small example application that renders supported artwork with the bbcat
+ Rust library and creates square PNG thumbnails for freedesktop file managers.
+EOF
+
+# Record every installed payload file so dpkg can verify it later.
+(
+    cd "$package_root"
+    find usr -type f -print | LC_ALL=C sort | xargs md5sum
+) >"$package_root/DEBIAN/md5sums"
+
+output="dist/bbcat-thumbnailer_${package_version}_${architecture}.deb"
+dpkg-deb --root-owner-group --build "$package_root" "$output"
+echo "$output"

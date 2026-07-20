@@ -1,0 +1,4 @@
+[Thumbnailer Entry]
+TryExec=@BINDIR@/bbcat-thumbnailer
+Exec=@BINDIR@/bbcat-thumbnailer %i %o %s
+MimeType=application/x-ansi-art;application/x-darkdraw;application/x-artworx;application/x-ripscrip;application/x-xbin;text/x-nfo;
