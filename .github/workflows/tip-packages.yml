@@ -35,7 +35,7 @@ jobs:
       - name: Build Debian package
         run: |
           git config --global --add safe.directory "$GITHUB_WORKSPACE"
-          make deb
+          make deb CARGO=cargo
 
       - uses: actions/upload-artifact@v7
         with:
