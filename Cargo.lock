@@ -4,13 +4,13 @@ version = 4
 
 [[package]]
 name = "bbcat"
-version = "0.5.7"
+version = "0.5.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ada5af9f978713036ed4b0033f92d78558d3ce9ad69bf0fbbf80894acaf1ddfd"
+checksum = "8641b97cb29031f06ee6ef5050896d6d99d4aa695de046babe77064090ff6ac1"
 
 [[package]]
 name = "bbcat-thumbnailer"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "bbcat",
 ]
