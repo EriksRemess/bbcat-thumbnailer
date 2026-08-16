@@ -6,8 +6,9 @@ turns supported artwork into small square previews.
 
 The important part of the example is the boundary between bbcat and the host
 application. bbcat recognizes and decodes ANSI/ASC/DIZ, NFO, DarkDraw DDW,
-ArtWorx ADF, RIPscrip, and XBin data. The application decides what to do with
-the decoded artwork—in this case, crop it, scale it, and hand a PNG to Nautilus.
+ArtWorx ADF, RIPscrip, TundraDraw TND, and XBin data. The application decides
+what to do with the decoded artwork—in this case, crop it, scale it, and hand a
+PNG to Nautilus.
 
 ## Using bbcat in this example
 
@@ -27,11 +28,11 @@ let document = bbcat::decode_with_options(
 The filename helps bbcat distinguish formats whose contents do not carry a
 unique signature. The returned `Document` has a common `Screen` regardless of
 the original format, so the rest of the application does not need separate
-ANSI, ADF, DDW, RIPscrip, and XBin rendering paths.
+ANSI, ADF, DDW, RIPscrip, TundraDraw, and XBin rendering paths.
 
 A `Screen` can contain either:
 
-- character cells with colors, a bitmap font, and a palette; or
+- character cells with palette or per-cell 24-bit colors and a bitmap font; or
 - an indexed pixel raster produced from graphics such as RIPscrip.
 
 For an application that wants the complete rendered image unchanged,
@@ -54,7 +55,8 @@ The example then:
 2. Selects a square at the artwork's top-left origin, keeping the beginning of
    tall art and the left side of wide art.
 3. Maps each thumbnail pixel back to a pixel in bbcat's `Screen`.
-4. Resolves glyph bits or raster indexes through the screen's palette.
+4. Resolves glyph bits through palette or per-cell 24-bit colors, and raster
+   indexes through the screen's palette.
 5. Writes an RGB PNG to `OUTPUT`, capped at 256 × 256 pixels.
 
 The PNG writer uses only the Rust standard library, leaving bbcat as the

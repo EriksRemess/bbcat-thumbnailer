@@ -158,10 +158,17 @@ fn pixel_color(screen: &Screen, x: usize, y: usize) -> Result<[u8; 3], String> {
 
     // Character formats need one more mapping: pixel -> cell -> font row. Font
     // bytes are glyph-major, with the most-significant bit at the left edge.
+    // cell_colors() preserves TundraDraw's per-cell 24-bit colors while also
+    // resolving palette indexes for the other character formats.
     let (glyph_width, glyph_height) = screen.glyph_dimensions();
+    let column = x / glyph_width;
+    let row = y / glyph_height;
     let cell = screen
-        .cell(x / glyph_width, y / glyph_height)
+        .cell(column, row)
         .ok_or("character pixel is outside the rendered image")?;
+    let (foreground_color, background_color) = screen
+        .cell_colors(column, row)
+        .ok_or("character colors are outside the rendered image")?;
     let glyph_row = y % glyph_height;
     let glyph_offset = usize::from(cell.character)
         .checked_mul(glyph_height)
@@ -179,11 +186,11 @@ fn pixel_color(screen: &Screen, x: usize, y: usize) -> Result<[u8; 3], String> {
         8 if (0xc0..=0xdf).contains(&cell.character) => bits & 1 != 0,
         _ => false,
     };
-    Ok(screen.color(if foreground {
-        cell.foreground
+    Ok(if foreground {
+        foreground_color
     } else {
-        cell.background
-    }))
+        background_color
+    })
 }
 
 fn rgb_png(width: usize, height: usize, scanlines: &[u8]) -> Vec<u8> {
@@ -326,6 +333,32 @@ mod tests {
             png_dimensions(&encode_thumbnail(&small.screen, 256).unwrap()),
             (8, 8)
         );
+    }
+
+    #[test]
+    fn preserves_tundradraw_true_colors() {
+        let data = [
+            0x18, b'T', b'U', b'N', b'D', b'R', b'A', b'2', b'4', 6, b'A', 0, 0x12, 0x34, 0x56, 0,
+            0x65, 0x43, 0x21,
+        ];
+        let document = bbcat::decode_with_options(
+            &data,
+            DecodeOptions {
+                file_name: Some(Path::new("sample.tnd")),
+                width: Some(1),
+            },
+        )
+        .unwrap();
+        let (width, height) = document.screen.pixel_dimensions().unwrap();
+        let mut colors = Vec::with_capacity(width * height);
+        for y in 0..height {
+            for x in 0..width {
+                colors.push(pixel_color(&document.screen, x, y).unwrap());
+            }
+        }
+
+        assert!(colors.contains(&[0x12, 0x34, 0x56]));
+        assert!(colors.contains(&[0x65, 0x43, 0x21]));
     }
 
     fn png_dimensions(png: &[u8]) -> (u32, u32) {
