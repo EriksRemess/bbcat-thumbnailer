@@ -1,6 +1,6 @@
 [package]
 name = "bbcat-thumbnailer"
-version = "0.1.6"
+version = "0.1.7"
 edition = "2024"
 description = "Nautilus thumbnails for ANSI and BBS artwork rendered by bbcat"
 license = "MIT"
@@ -9,7 +9,7 @@ keywords = ["ansi-art", "bbs", "nautilus", "thumbnailer"]
 categories = ["multimedia::images"]
 
 [dependencies]
-bbcat = "0.7.1"
+bbcat = "0.7.2"
 
 [profile.release]
 lto = "thin"
